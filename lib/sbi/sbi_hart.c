@@ -703,6 +703,7 @@ const struct sbi_hart_ext_data sbi_hart_ext[] = {
 	__SBI_HART_EXT_DATA(ssccfg, SBI_HART_EXT_SSCCFG),
 	__SBI_HART_EXT_DATA(svade, SBI_HART_EXT_SVADE),
 	__SBI_HART_EXT_DATA(svadu, SBI_HART_EXT_SVADU),
+	__SBI_HART_EXT_DATA(smsdid, SBI_HART_EXT_SMSDID),
 };
 
 _Static_assert(SBI_HART_EXT_MAX == array_size(sbi_hart_ext),
@@ -950,6 +951,9 @@ __pmp_skip:
 	/* Detect if hart support sdtrig (debug triggers) */
 	__check_ext_csr(SBI_HART_PRIV_VER_UNKNOWN,
 			CSR_TSELECT, SBI_HART_EXT_SDTRIG);
+	/* Detect if hart supports supervisor domain extensions */
+	__check_ext_csr(SBI_HART_PRIV_VER_UNKNOWN,
+			CSR_MTTP, SBI_HART_EXT_SMSDID);
 
 #undef __check_ext_csr
 
