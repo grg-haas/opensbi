@@ -88,6 +88,7 @@ libsbi-objs-y += sbi_dbtr.o
 libsbi-objs-y += sbi_mpxy.o
 libsbi-objs-y += sbi_scratch.o
 libsbi-objs-y += sbi_sse.o
+libsbi-objs-y += sbi_smmtt.o
 libsbi-objs-y += sbi_string.o
 libsbi-objs-y += sbi_system.o
 libsbi-objs-y += sbi_timer.o
