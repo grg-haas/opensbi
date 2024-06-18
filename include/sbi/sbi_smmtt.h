@@ -7,15 +7,16 @@ typedef enum {
 	SMMTT_BARE = 0,
 #if __riscv_xlen == 32
 	SMMTT_34,
-	SMMTT_34_rw
+	SMMTT_34_rw,
 #else
 	SMMTT_46,
 	SMMTT_46_rw,
 	SMMTT_56,
-	SMMTT_56_rw
+	SMMTT_56_rw,
 #endif
-} smmtt_mode_t;
 
+	SMMTT_MAX
+} smmtt_mode_t;
 
 unsigned int mttp_get_sdidlen();
 
