@@ -2,21 +2,7 @@
 #define __SBI_SMMTT_H__
 
 #include <sbi/sbi_types.h>
-
-typedef enum {
-	SMMTT_BARE = 0,
-#if __riscv_xlen == 32
-	SMMTT_34,
-	SMMTT_34_rw,
-#else
-	SMMTT_46,
-	SMMTT_46_rw,
-	SMMTT_56,
-	SMMTT_56_rw,
-#endif
-
-	SMMTT_MAX
-} smmtt_mode_t;
+#include "smmtt_defs.h"
 
 unsigned int mttp_get_sdidlen();
 
