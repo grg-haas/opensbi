@@ -179,7 +179,7 @@ The DT properties of a domain instance DT node are as follows:
   and access permissions for the domain instance. Each list entry is a pair
   of DT node phandle and access permissions. The access permissions are
   represented as a 32bit bitmask having bits: **M readable** (BIT[0]),
-  **M writeable** (BIT[1]), **M executable** (BIT[2]), **SU readable**
+  **M writable** (BIT[1]), **M executable** (BIT[2]), **SU readable**
   (BIT[3]), **SU writable** (BIT[4]), and **SU executable** (BIT[5]).
   The enforce permission bit (BIT[6]), if set, will lock the permissions
   in the PMP. This will enforce the permissions on M-mode as well which
