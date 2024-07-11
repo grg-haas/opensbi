@@ -7,6 +7,7 @@ enum sbi_isolation_method {
 	SBI_ISOLATION_UNKNOWN = 0,
 	SBI_ISOLATION_PMP,
 	SBI_ISOLATION_SMEPMP,
+	SBI_ISOLATION_SMMTT,
 };
 
 #include <sbi/sbi_domain.h>
@@ -118,6 +119,10 @@ struct sbi_memregion {
 		(SBI_MEMREGION_M_READABLE | \
 		 SBI_MEMREGION_M_WRITABLE | \
 		 SBI_MEMREGION_M_EXECUTABLE)
+
+#define SBI_MEMREGION_SU_RX             \
+		(SBI_MEMREGION_SU_READABLE | \
+		 SBI_MEMREGION_SU_EXECUTABLE)
 
 #define SBI_MEMREGION_SU_RWX		\
 		(SBI_MEMREGION_SU_READABLE | \
