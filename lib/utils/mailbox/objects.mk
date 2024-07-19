@@ -8,7 +8,7 @@
 #
 
 libsbiutils-objs-$(CONFIG_FDT_MAILBOX) += mailbox/fdt_mailbox.o
-libsbiutils-objs-$(CONFIG_FDT_MAILBOX) += mailbox/fdt_mailbox_drivers.o
+libsbiutils-objs-$(CONFIG_FDT_MAILBOX) += mailbox/fdt_mailbox_drivers.carray.o
 
 libsbiutils-objs-$(CONFIG_MAILBOX) += mailbox/mailbox.o
 
