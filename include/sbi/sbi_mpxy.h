@@ -101,6 +101,7 @@ struct sbi_mpxy_channel {
 	struct sbi_dlist head;
 	u32 channel_id;
 	struct sbi_mpxy_channel_attrs attrs;
+	void *opaque;
 
 	/**
 	 * Read message protocol attributes
