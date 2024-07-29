@@ -17,6 +17,11 @@ config FDT_MPXY_RPMI_MBOX
 config FDT_MPXY_MM
 	bool "FDT MPXY MM client driver"
 	default n
+
+config FDT_MPXY_FDT
+    bool "FDT MPXY FDT client driver"
+    default n
+
 endif
 
 endmenu
