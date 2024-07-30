@@ -99,6 +99,7 @@ ulong sbi_domain_get_assigned_hartmask(const struct sbi_domain *dom,
 static int sanitize_domain(struct sbi_domain *dom)
 {
 	int i, rc;
+	struct sbi_memregion *reg;
 
 	/* Check possible HARTs */
 	if (!dom->possible_harts) {
@@ -120,6 +121,15 @@ static int sanitize_domain(struct sbi_domain *dom)
 		sbi_printf("%s: %s has unsanitizable regions\n",
 			   __func__, dom->name);
 		return rc;
+	}
+
+	/* Recount root memregions since the above call may have consolidated
+	 * or otherwise pruned memregions away */
+	if (dom == &root) {
+		root_memregs_count = 0;
+		sbi_domain_for_each_memregion(dom, reg) {
+			root_memregs_count++;
+		}
 	}
 
 	/*
@@ -290,8 +300,7 @@ int sbi_domain_register(struct sbi_domain *dom,
 int sbi_domain_root_add_memregion(const struct sbi_memregion *reg)
 {
 	int rc;
-	bool reg_merged;
-	struct sbi_memregion *nreg, *nreg1, *nreg2;
+	struct sbi_memregion *nreg;
 
 	/* Sanity checks */
 	if (!reg || domain_finalized || !root.regions ||
@@ -302,39 +311,16 @@ int sbi_domain_root_add_memregion(const struct sbi_memregion *reg)
 	nreg = &root.regions[root_memregs_count];
 	sbi_memcpy(nreg, reg, sizeof(*reg));
 	root_memregs_count++;
-       root.regions[root_memregs_count].size = 0;
+	root.regions[root_memregs_count].size = 0;
 
-	/* Sort and optimize root regions */
-	do {
-		/* Sanitize the root domain so that memregions are sorted */
-		rc = sanitize_domain(&root);
-		if (rc) {
-			sbi_printf("%s: sanity checks failed for"
-				   " %s (error %d)\n", __func__,
-				   root.name, rc);
-			return rc;
-		}
-
-		/* Merge consecutive memregions with same flags */
-		reg_merged = false;
-		sbi_domain_for_each_memregion(&root, nreg) {
-			nreg1 = nreg + 1;
-			if (!nreg1->size)
-				continue;
-
-			if ((nreg->base + nreg->size) == nreg1->base &&
-			    nreg->flags == nreg1->flags) {
-				nreg->size += nreg1->size;
-				while (nreg1->size) {
-					nreg2 = nreg1 + 1;
-					sbi_memcpy(nreg1, nreg2, sizeof(*nreg1));
-					nreg1++;
-				}
-				reg_merged = true;
-				root_memregs_count--;
-			}
-		}
-	} while (reg_merged);
+	/* Sanitize the root domain so that memregions are sorted */
+	rc = sanitize_domain(&root);
+	if (rc) {
+		sbi_printf("%s: sanity checks failed for"
+			   " %s (error %d)\n", __func__,
+			   root.name, rc);
+		return rc;
+	}
 
 	return 0;
 }
