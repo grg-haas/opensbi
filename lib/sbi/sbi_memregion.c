@@ -28,7 +28,7 @@ void sbi_memregion_init(unsigned long addr,
 
 	if (reg) {
 		reg->base = base;
-		reg->order = order;
+		reg->size = (order == __riscv_xlen) ? -1UL : BIT(order);
 		reg->flags = flags;
 	}
 }
@@ -64,13 +64,14 @@ static bool is_region_compatible(const struct sbi_memregion *regA,
 /* Check if region complies with constraints */
 static bool is_region_valid(const struct sbi_memregion *reg)
 {
-	if (reg->order < 3 || __riscv_xlen < reg->order)
+	unsigned int order = log2roundup(reg->size);
+	if (order < 3 || __riscv_xlen < order)
 		return false;
 
-	if (reg->order == __riscv_xlen && reg->base != 0)
+	if (order == __riscv_xlen && reg->base != 0)
 		return false;
 
-	if (reg->order < __riscv_xlen && (reg->base & (BIT(reg->order) - 1)))
+	if (order < __riscv_xlen && (reg->base & (BIT(order) - 1)))
 		return false;
 
 	return true;
@@ -80,10 +81,17 @@ static bool is_region_valid(const struct sbi_memregion *reg)
 static bool is_region_before(const struct sbi_memregion *regA,
 			     const struct sbi_memregion *regB)
 {
-	if (regA->order < regB->order)
+	// Sentinel region always goes last
+	if (!regA->size)
+		return false;
+
+	if (!regB->size)
 		return true;
 
-	if ((regA->order == regB->order) &&
+	if (regA->size < regB->size)
+		return true;
+
+	if ((regA->size == regB->size) &&
 	    (regA->base < regB->base))
 		return true;
 
@@ -121,8 +129,8 @@ int sbi_memregion_sanitize(struct sbi_domain *dom)
 	sbi_domain_for_each_memregion(dom, reg) {
 		if (!is_region_valid(reg)) {
 			sbi_printf("%s: %s has invalid region base=0x%lx "
-				   "order=%lu flags=0x%lx\n", __func__,
-				   dom->name, reg->base, reg->order,
+				   "size=0x%lx flags=0x%lx\n", __func__,
+				   dom->name, reg->base, reg->size,
 				   reg->flags);
 			return SBI_EINVAL;
 		}
@@ -260,7 +268,7 @@ static const struct sbi_memregion *find_next_subset_region(
 			continue;
 
 		if (!ret || (sreg->base < ret->base) ||
-		    ((sreg->base == ret->base) && (sreg->order < ret->order)))
+		    ((sreg->base == ret->base) && (sreg->size < ret->size)))
 			ret = sreg;
 	}
 
@@ -289,8 +297,8 @@ bool sbi_domain_check_addr_range(const struct sbi_domain *dom,
 		sreg = find_next_subset_region(dom, reg, addr);
 		if (sreg)
 			addr = sreg->base;
-		else if (reg->order < __riscv_xlen)
-			addr = reg->base + (1UL << reg->order);
+		else if (reg->size != -1UL)
+			addr = reg->base + reg->size;
 		else
 			break;
 	}

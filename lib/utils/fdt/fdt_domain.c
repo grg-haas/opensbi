@@ -250,7 +250,6 @@ static int __fdt_parse_region(const void *fdt, int domain_offset,
 			      void *opaque)
 {
 	int len;
-	u32 val32;
 	u64 val64;
 	const u32 *val;
 	struct parse_region_data *preg = opaque;
@@ -281,14 +280,26 @@ static int __fdt_parse_region(const void *fdt, int domain_offset,
 	val64 = (val64 << 32) | fdt32_to_cpu(val[1]);
 	region->base = val64;
 
-	/* Read "order" DT property */
-	val = fdt_getprop(fdt, region_offset, "order", &len);
-	if (!val || len != 4)
-		return SBI_EINVAL;
-	val32 = fdt32_to_cpu(*val);
-	if (val32 < 3 || __riscv_xlen < val32)
-		return SBI_EINVAL;
-	region->order = val32;
+	/* Read "size" DT property */
+	val = fdt_getprop(fdt, region_offset, "size", &len);
+	if (!val || len != 8) {
+		// Check for older "order" property
+		val = fdt_getprop(fdt, region_offset, "order", &len);
+		if (!val || len != 4) {
+			return SBI_EINVAL;
+		}
+
+		val64 = fdt32_to_cpu(*val);
+		if (val64 < 3 || __riscv_xlen < val64)
+			return SBI_EINVAL;
+
+		val64 = BIT(val64);
+	} else {
+		val64 = ((uint64_t) fdt32_to_cpu(val[0])) << 32;
+		val64 |= fdt32_to_cpu(val[1]);
+	}
+
+	region->size = val64;
 
 	/* Read "mmio" DT property */
 	region->flags = region_access & SBI_MEMREGION_ACCESS_MASK;
