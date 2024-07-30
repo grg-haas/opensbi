@@ -145,6 +145,12 @@ struct sbi_memregion {
 	unsigned long flags;
 };
 
+#define memregion_start(reg) \
+	((reg)->base)
+
+#define memregion_end(reg) \
+	((reg)->order < __riscv_xlen) ? \
+	      (reg)->base + ((1UL << (reg)->order) - 1) : -1UL;
 /**
  * Initialize a domain memory region based on it's physical
  * address and size.
