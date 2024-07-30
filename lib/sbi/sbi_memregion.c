@@ -114,39 +114,10 @@ static void clear_region(struct sbi_memregion * reg)
 	sbi_memset(reg, 0x0, sizeof(*reg));
 }
 
-int sbi_memregion_sanitize(struct sbi_domain *dom)
+static void sort_memregions(struct sbi_domain *dom, int count)
 {
-	int i, j, count;
-	bool is_covered;
+	int i, j;
 	struct sbi_memregion *reg, *reg1;
-
-	/* Check memory regions */
-	if (!dom->regions) {
-		sbi_printf("%s: %s regions is NULL\n",
-			   __func__, dom->name);
-		return SBI_EINVAL;
-	}
-	sbi_domain_for_each_memregion(dom, reg) {
-		if (!is_region_valid(reg)) {
-			sbi_printf("%s: %s has invalid region base=0x%lx "
-				   "size=0x%lx flags=0x%lx\n", __func__,
-				   dom->name, reg->base, reg->size,
-				   reg->flags);
-			return SBI_EINVAL;
-		}
-	}
-
-	/* Count memory regions */
-	count = 0;
-	sbi_domain_for_each_memregion(dom, reg)
-		count++;
-
-	/* Check presence of firmware regions */
-	if (!dom->fw_region_inited) {
-		sbi_printf("%s: %s does not have firmware region\n",
-			   __func__, dom->name);
-		return SBI_EINVAL;
-	}
 
 	/* Sort the memory regions */
 	for (i = 0; i < (count - 1); i++) {
@@ -160,6 +131,13 @@ int sbi_memregion_sanitize(struct sbi_domain *dom)
 			swap_region(reg, reg1);
 		}
 	}
+}
+
+static void overlap_memregions(struct sbi_domain *dom, int count)
+{
+	int i = 0, j;
+	bool is_covered;
+	struct sbi_memregion *reg, *reg1;
 
 	/* Remove covered regions */
 	while(i < (count - 1)) {
@@ -185,6 +163,71 @@ int sbi_memregion_sanitize(struct sbi_domain *dom)
 		} else
 			i++;
 	}
+}
+
+static void merge_memregions(struct sbi_domain *dom, int *nmerged)
+{
+	struct sbi_memregion *reg, *reg1, *reg2;
+
+	/* Merge consecutive memregions with same flags */
+	*nmerged = 0;
+	sbi_domain_for_each_memregion(dom, reg) {
+		reg1 = reg + 1;
+		if (!reg1->size)
+			continue;
+
+		if ((reg->base + reg->size) == reg1->base &&
+		    reg->flags == reg1->flags) {
+			reg->size += reg1->size;
+			while (reg1->size) {
+				reg2 = reg1 + 1;
+				sbi_memcpy(reg1, reg2, sizeof(*reg1));
+				reg1++;
+			}
+			(*nmerged)++;
+		}
+	}
+}
+
+int sbi_memregion_sanitize(struct sbi_domain *dom)
+{
+	int count, nmerged;
+	struct sbi_memregion *reg;
+
+	/* Check memory regions */
+	if (!dom->regions) {
+		sbi_printf("%s: %s regions is NULL\n",
+			   __func__, dom->name);
+		return SBI_EINVAL;
+	}
+
+	sbi_domain_for_each_memregion(dom, reg) {
+		if (!is_region_valid(reg)) {
+			sbi_printf("%s: %s has invalid region base=0x%lx "
+				   "size=0x%lx flags=0x%lx\n", __func__,
+				   dom->name, reg->base, reg->size,
+				   reg->flags);
+			return SBI_EINVAL;
+		}
+	}
+
+	/* Count memory regions */
+	count = 0;
+	sbi_domain_for_each_memregion(dom, reg)
+		count++;
+
+	/* Check presence of firmware regions */
+	if (!dom->fw_region_inited) {
+		sbi_printf("%s: %s does not have firmware region\n",
+			   __func__, dom->name);
+		return SBI_EINVAL;
+	}
+
+	do {
+		sort_memregions(dom, count);
+		overlap_memregions(dom, count);
+		merge_memregions(dom, &nmerged);
+	} while (nmerged);
 
 	return SBI_OK;
 }
