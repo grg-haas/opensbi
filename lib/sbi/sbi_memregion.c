@@ -4,28 +4,6 @@
 #include <sbi/sbi_error.h>
 #include <sbi/sbi_string.h>
 
-static void memregion_sanitize_pmp(struct sbi_memregion *reg)
-{
-	unsigned long base = 0, order;
-	unsigned long addr = reg->base, size = reg->size;
-	for (order = log2roundup(size) ; order <= __riscv_xlen; order++) {
-		if (order < __riscv_xlen) {
-			base = addr & ~((1UL << order) - 1UL);
-			if ((base <= addr) &&
-			    (addr < (base + (1UL << order))) &&
-			    (base <= (addr + size - 1UL)) &&
-			    ((addr + size - 1UL) < (base + (1UL << order))))
-				break;
-		} else {
-			base = 0;
-			break;
-		}
-	}
-
-	reg->base = base;
-	reg->size = (order == __riscv_xlen) ? -1UL : BIT(order);
-}
-
 void sbi_memregion_init(unsigned long addr,
 			       unsigned long size,
 			       unsigned long flags,
@@ -210,6 +188,28 @@ static void merge_memregions(struct sbi_domain *dom, int *nmerged)
 			(*nmerged)++;
 		}
 	}
+}
+
+static void memregion_sanitize_pmp(struct sbi_memregion *reg)
+{
+	unsigned long base = 0, order;
+	unsigned long addr = reg->base, size = reg->size;
+	for (order = log2roundup(size) ; order <= __riscv_xlen; order++) {
+		if (order < __riscv_xlen) {
+			base = addr & ~((1UL << order) - 1UL);
+			if ((base <= addr) &&
+			    (addr < (base + (1UL << order))) &&
+			    (base <= (addr + size - 1UL)) &&
+			    ((addr + size - 1UL) < (base + (1UL << order))))
+				break;
+		} else {
+			base = 0;
+			break;
+		}
+	}
+
+	reg->base = base;
+	reg->size = (order == __riscv_xlen) ? -1UL : BIT(order);
 }
 
 static int memregion_sanitize(struct sbi_domain *dom,
