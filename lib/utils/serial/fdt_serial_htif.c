@@ -33,8 +33,8 @@ static int serial_htif_init(const void *fdt, int nodeoff,
 	fdt_get_node_addr_size(fdt, nodeoff, 1, &tohost_addr, NULL);
 
 	rc = sbi_domain_root_add_memrange(fromhost_addr, PAGE_SIZE, PAGE_SIZE,
-					  (SBI_DOMAIN_MEMREGION_MMIO |
-					   SBI_DOMAIN_MEMREGION_SHARED_SURW_MRW));
+					  (SBI_MEMREGION_MMIO |
+					   SBI_MEMREGION_SHARED_SURW_MRW));
 	if (rc)
 		return rc;
 

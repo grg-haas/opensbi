@@ -115,7 +115,7 @@ static int sanitize_domain(struct sbi_domain *dom)
 		}
 	}
 
-	rc = sbi_domain_memregions_sanitize(dom);
+	rc = sbi_memregion_sanitize(dom);
 	if (rc) {
 		sbi_printf("%s: %s has unsanitizable regions\n",
 			   __func__, dom->name);
@@ -287,11 +287,11 @@ int sbi_domain_register(struct sbi_domain *dom,
 	return 0;
 }
 
-int sbi_domain_root_add_memregion(const struct sbi_domain_memregion *reg)
+int sbi_domain_root_add_memregion(const struct sbi_memregion *reg)
 {
 	int rc;
 	bool reg_merged;
-	struct sbi_domain_memregion *nreg, *nreg1, *nreg2;
+	struct sbi_memregion *nreg, *nreg1, *nreg2;
 
 	/* Sanity checks */
 	if (!reg || domain_finalized || !root.regions ||
@@ -346,7 +346,7 @@ int sbi_domain_root_add_memrange(unsigned long addr, unsigned long size,
 {
 	int rc;
 	unsigned long pos, end, rsize;
-	struct sbi_domain_memregion reg;
+	struct sbi_memregion reg;
 
 	pos = addr;
 	end = addr + size;
@@ -358,7 +358,7 @@ int sbi_domain_root_add_memrange(unsigned long addr, unsigned long size,
 			rsize = ((end - pos) < align) ?
 				(end - pos) : align;
 
-		sbi_domain_memregion_init(pos, rsize, region_flags, &reg);
+		sbi_memregion_init(pos, rsize, region_flags, &reg);
 		rc = sbi_domain_root_add_memregion(&reg);
 		if (rc)
 			return rc;
@@ -441,7 +441,7 @@ int sbi_domain_init(struct sbi_scratch *scratch, u32 cold_hartid)
 	u32 i;
 	int rc;
 	struct sbi_hartmask *root_hmask;
-	struct sbi_domain_memregion *root_memregs;
+	struct sbi_memregion *root_memregs;
 	const struct sbi_platform *plat = sbi_platform_ptr(scratch);
 
 	if (scratch->fw_rw_offset == 0 ||
@@ -478,16 +478,16 @@ int sbi_domain_init(struct sbi_scratch *scratch, u32 cold_hartid)
 	root.possible_harts = root_hmask;
 
 	/* Root domain firmware memory region */
-	sbi_domain_memregion_init(scratch->fw_start, scratch->fw_rw_offset,
-				  (SBI_DOMAIN_MEMREGION_M_READABLE |
-				   SBI_DOMAIN_MEMREGION_M_EXECUTABLE),
-				  &root_memregs[root_memregs_count++]);
+	sbi_memregion_init(scratch->fw_start, scratch->fw_rw_offset,
+			   (SBI_MEMREGION_M_READABLE |
+			    SBI_MEMREGION_M_EXECUTABLE),
+			   &root_memregs[root_memregs_count++]);
 
-	sbi_domain_memregion_init((scratch->fw_start + scratch->fw_rw_offset),
-				  (scratch->fw_size - scratch->fw_rw_offset),
-				  (SBI_DOMAIN_MEMREGION_M_READABLE |
-				   SBI_DOMAIN_MEMREGION_M_WRITABLE),
-				  &root_memregs[root_memregs_count++]);
+	sbi_memregion_init((scratch->fw_start + scratch->fw_rw_offset),
+			   (scratch->fw_size - scratch->fw_rw_offset),
+			   (SBI_MEMREGION_M_READABLE |
+			    SBI_MEMREGION_M_WRITABLE),
+			   &root_memregs[root_memregs_count++]);
 
 	root.fw_region_inited = true;
 
@@ -498,11 +498,11 @@ int sbi_domain_init(struct sbi_scratch *scratch, u32 cold_hartid)
 	 * have access to SU region while previous entries will allow
 	 * access to M-mode regions.
 	 */
-	sbi_domain_memregion_init(0, ~0UL,
-				  (SBI_DOMAIN_MEMREGION_SU_READABLE |
-				   SBI_DOMAIN_MEMREGION_SU_WRITABLE |
-				   SBI_DOMAIN_MEMREGION_SU_EXECUTABLE),
-				  &root_memregs[root_memregs_count++]);
+	sbi_memregion_init(0, ~0UL,
+			   (SBI_MEMREGION_SU_READABLE |
+			    SBI_MEMREGION_SU_WRITABLE |
+			    SBI_MEMREGION_SU_EXECUTABLE),
+			   &root_memregs[root_memregs_count++]);
 
 	/* Root domain memory region end */
 	root_memregs[root_memregs_count].order = 0;

@@ -50,7 +50,7 @@
 #include <sbi/sbi_version.h>
 #include <sbi/sbi_trap_ldst.h>
 
-struct sbi_domain_memregion;
+struct sbi_memregion;
 struct sbi_ecall_return;
 struct sbi_trap_regs;
 struct sbi_hart_features;

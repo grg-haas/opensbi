@@ -120,9 +120,9 @@ static int __fixup_find_domain_offset(void *fdt, int doff, void *p)
 	return 0;
 }
 
-#define DISABLE_DEVICES_MASK	(SBI_DOMAIN_MEMREGION_READABLE | \
-				 SBI_DOMAIN_MEMREGION_WRITEABLE | \
-				 SBI_DOMAIN_MEMREGION_EXECUTABLE)
+#define DISABLE_DEVICES_MASK	(SBI_MEMREGION_READABLE | \
+				 SBI_MEMREGION_WRITEABLE | \
+				 SBI_MEMREGION_EXECUTABLE)
 
 static int __fixup_count_disable_devices(void *fdt, int doff, int roff,
 					 u32 perm, void *p)
@@ -254,7 +254,7 @@ static int __fdt_parse_region(const void *fdt, int domain_offset,
 	u64 val64;
 	const u32 *val;
 	struct parse_region_data *preg = opaque;
-	struct sbi_domain_memregion *region;
+	struct sbi_memregion *region;
 
 	/*
 	 * Non-root domains cannot add a region with only M-mode
@@ -264,8 +264,8 @@ static int __fdt_parse_region(const void *fdt, int domain_offset,
 	 * SU permission bits can't be all zeroes when M-mode permission
 	 * bits have at least one bit set.
 	 */
-	if (!(region_access & SBI_DOMAIN_MEMREGION_SU_ACCESS_MASK)
-	    && (region_access & SBI_DOMAIN_MEMREGION_M_ACCESS_MASK))
+	if (!(region_access & SBI_MEMREGION_SU_ACCESS_MASK)
+	    && (region_access & SBI_MEMREGION_M_ACCESS_MASK))
 		return SBI_EINVAL;
 
 	/* Find next region of the domain */
@@ -291,9 +291,9 @@ static int __fdt_parse_region(const void *fdt, int domain_offset,
 	region->order = val32;
 
 	/* Read "mmio" DT property */
-	region->flags = region_access & SBI_DOMAIN_MEMREGION_ACCESS_MASK;
+	region->flags = region_access & SBI_MEMREGION_ACCESS_MASK;
 	if (fdt_get_property(fdt, region_offset, "mmio", NULL))
-		region->flags |= SBI_DOMAIN_MEMREGION_MMIO;
+		region->flags |= SBI_MEMREGION_MMIO;
 
 	preg->region_count++;
 
@@ -310,7 +310,7 @@ static int __fdt_parse_domain(const void *fdt, int domain_offset, void *opaque)
 	struct sbi_hartmask assign_mask;
 	struct parse_region_data preg;
 	int *cold_domain_offset = opaque;
-	struct sbi_domain_memregion *reg;
+	struct sbi_memregion *reg;
 	int i, err = 0, len, cpus_offset, cpu_offset, doffset;
 
 	dom = sbi_zalloc(sizeof(*dom));
@@ -379,9 +379,9 @@ static int __fdt_parse_domain(const void *fdt, int domain_offset, void *opaque)
 	 * 2) mmio regions protecting M-mode only mmio devices
 	 */
 	sbi_domain_for_each_memregion(&root, reg) {
-		if ((reg->flags & SBI_DOMAIN_MEMREGION_SU_READABLE) ||
-		    (reg->flags & SBI_DOMAIN_MEMREGION_SU_WRITABLE) ||
-		    (reg->flags & SBI_DOMAIN_MEMREGION_SU_EXECUTABLE))
+		if ((reg->flags & SBI_MEMREGION_SU_READABLE) ||
+		    (reg->flags & SBI_MEMREGION_SU_WRITABLE) ||
+		    (reg->flags & SBI_MEMREGION_SU_EXECUTABLE))
 			continue;
 		if (preg.max_regions <= preg.region_count) {
 			err = SBI_EINVAL;

@@ -36,9 +36,9 @@ static int sophgo_sg2042_early_init(bool cold_boot, const void *fdt,
 					SOPHGO_SG2042_TIMER_SIZE *
 					SOPHGO_SG2042_TIMER_NUM,
 					MTIMER_REGION_ALIGN,
-					(SBI_DOMAIN_MEMREGION_MMIO |
-					 SBI_DOMAIN_MEMREGION_M_READABLE |
-					 SBI_DOMAIN_MEMREGION_M_WRITABLE));
+					(SBI_MEMREGION_MMIO |
+					 SBI_MEMREGION_M_READABLE |
+					 SBI_MEMREGION_M_WRITABLE));
 
 
 	return 0;

@@ -282,7 +282,7 @@ static int fdt_resv_memory_update_node(void *fdt, unsigned long addr,
  */
 int fdt_reserved_memory_fixup(void *fdt)
 {
-	struct sbi_domain_memregion *reg;
+	struct sbi_memregion *reg;
 	struct sbi_domain *dom = sbi_domain_thishart_ptr();
 	unsigned long filtered_base[PMP_COUNT] = { 0 };
 	unsigned char filtered_order[PMP_COUNT] = { 0 };
@@ -343,13 +343,13 @@ int fdt_reserved_memory_fixup(void *fdt)
 	i = 0;
 	sbi_domain_for_each_memregion(dom, reg) {
 		/* Ignore MMIO or READABLE or WRITABLE or EXECUTABLE regions */
-		if (reg->flags & SBI_DOMAIN_MEMREGION_MMIO)
+		if (reg->flags & SBI_MEMREGION_MMIO)
 			continue;
-		if (reg->flags & SBI_DOMAIN_MEMREGION_SU_READABLE)
+		if (reg->flags & SBI_MEMREGION_SU_READABLE)
 			continue;
-		if (reg->flags & SBI_DOMAIN_MEMREGION_SU_WRITABLE)
+		if (reg->flags & SBI_MEMREGION_SU_WRITABLE)
 			continue;
-		if (reg->flags & SBI_DOMAIN_MEMREGION_SU_EXECUTABLE)
+		if (reg->flags & SBI_MEMREGION_SU_EXECUTABLE)
 			continue;
 
 		if (i >= PMP_COUNT) {

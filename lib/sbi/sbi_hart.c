@@ -288,38 +288,38 @@ unsigned int sbi_hart_mhpm_bits(struct sbi_scratch *scratch)
  */
 static unsigned int sbi_hart_get_smepmp_flags(struct sbi_scratch *scratch,
 					      struct sbi_domain *dom,
-					      struct sbi_domain_memregion *reg)
+					      struct sbi_memregion *reg)
 {
 	unsigned int pmp_flags = 0;
 
-	if (SBI_DOMAIN_MEMREGION_IS_SHARED(reg->flags)) {
+	if (SBI_MEMREGION_IS_SHARED(reg->flags)) {
 		/* Read only for both M and SU modes */
-		if (SBI_DOMAIN_MEMREGION_IS_SUR_MR(reg->flags))
+		if (SBI_MEMREGION_IS_SUR_MR(reg->flags))
 			pmp_flags = (PMP_L | PMP_R | PMP_W | PMP_X);
 
 		/* Execute for SU but Read/Execute for M mode */
-		else if (SBI_DOMAIN_MEMREGION_IS_SUX_MRX(reg->flags))
+		else if (SBI_MEMREGION_IS_SUX_MRX(reg->flags))
 			/* locked region */
 			pmp_flags = (PMP_L | PMP_W | PMP_X);
 
 		/* Execute only for both M and SU modes */
-		else if (SBI_DOMAIN_MEMREGION_IS_SUX_MX(reg->flags))
+		else if (SBI_MEMREGION_IS_SUX_MX(reg->flags))
 			pmp_flags = (PMP_L | PMP_W);
 
 		/* Read/Write for both M and SU modes */
-		else if (SBI_DOMAIN_MEMREGION_IS_SURW_MRW(reg->flags))
+		else if (SBI_MEMREGION_IS_SURW_MRW(reg->flags))
 			pmp_flags = (PMP_W | PMP_X);
 
 		/* Read only for SU mode but Read/Write for M mode */
-		else if (SBI_DOMAIN_MEMREGION_IS_SUR_MRW(reg->flags))
+		else if (SBI_MEMREGION_IS_SUR_MRW(reg->flags))
 			pmp_flags = (PMP_W);
-	} else if (SBI_DOMAIN_MEMREGION_M_ONLY_ACCESS(reg->flags)) {
+	} else if (SBI_MEMREGION_M_ONLY_ACCESS(reg->flags)) {
 		/*
 		 * When smepmp is supported and used, M region cannot have RWX
 		 * permissions on any region.
 		 */
-		if ((reg->flags & SBI_DOMAIN_MEMREGION_M_ACCESS_MASK)
-		    == SBI_DOMAIN_MEMREGION_M_RWX) {
+		if ((reg->flags & SBI_MEMREGION_M_ACCESS_MASK)
+		    == SBI_MEMREGION_M_RWX) {
 			sbi_printf("%s: M-mode only regions cannot have"
 				   "RWX permissions\n", __func__);
 			return 0;
@@ -328,18 +328,18 @@ static unsigned int sbi_hart_get_smepmp_flags(struct sbi_scratch *scratch,
 		/* M-mode only access regions are always locked */
 		pmp_flags |= PMP_L;
 
-		if (reg->flags & SBI_DOMAIN_MEMREGION_M_READABLE)
+		if (reg->flags & SBI_MEMREGION_M_READABLE)
 			pmp_flags |= PMP_R;
-		if (reg->flags & SBI_DOMAIN_MEMREGION_M_WRITABLE)
+		if (reg->flags & SBI_MEMREGION_M_WRITABLE)
 			pmp_flags |= PMP_W;
-		if (reg->flags & SBI_DOMAIN_MEMREGION_M_EXECUTABLE)
+		if (reg->flags & SBI_MEMREGION_M_EXECUTABLE)
 			pmp_flags |= PMP_X;
-	} else if (SBI_DOMAIN_MEMREGION_SU_ONLY_ACCESS(reg->flags)) {
-		if (reg->flags & SBI_DOMAIN_MEMREGION_SU_READABLE)
+	} else if (SBI_MEMREGION_SU_ONLY_ACCESS(reg->flags)) {
+		if (reg->flags & SBI_MEMREGION_SU_READABLE)
 			pmp_flags |= PMP_R;
-		if (reg->flags & SBI_DOMAIN_MEMREGION_SU_WRITABLE)
+		if (reg->flags & SBI_MEMREGION_SU_WRITABLE)
 			pmp_flags |= PMP_W;
-		if (reg->flags & SBI_DOMAIN_MEMREGION_SU_EXECUTABLE)
+		if (reg->flags & SBI_MEMREGION_SU_EXECUTABLE)
 			pmp_flags |= PMP_X;
 	}
 
@@ -348,7 +348,7 @@ static unsigned int sbi_hart_get_smepmp_flags(struct sbi_scratch *scratch,
 
 static void sbi_hart_smepmp_set(struct sbi_scratch *scratch,
 				struct sbi_domain *dom,
-				struct sbi_domain_memregion *reg,
+				struct sbi_memregion *reg,
 				unsigned int pmp_idx,
 				unsigned int pmp_flags,
 				unsigned int pmp_log2gran,
@@ -371,7 +371,7 @@ static int sbi_hart_smepmp_configure(struct sbi_scratch *scratch,
 				     unsigned int pmp_log2gran,
 				     unsigned long pmp_addr_max)
 {
-	struct sbi_domain_memregion *reg;
+	struct sbi_memregion *reg;
 	struct sbi_domain *dom = sbi_domain_thishart_ptr();
 	unsigned int pmp_idx, pmp_flags;
 
@@ -394,7 +394,7 @@ static int sbi_hart_smepmp_configure(struct sbi_scratch *scratch,
 			break;
 
 		/* Skip shared and SU-only regions */
-		if (!SBI_DOMAIN_MEMREGION_M_ONLY_ACCESS(reg->flags)) {
+		if (!SBI_MEMREGION_M_ONLY_ACCESS(reg->flags)) {
 			pmp_idx++;
 			continue;
 		}
@@ -420,7 +420,7 @@ static int sbi_hart_smepmp_configure(struct sbi_scratch *scratch,
 			break;
 
 		/* Skip M-only regions */
-		if (SBI_DOMAIN_MEMREGION_M_ONLY_ACCESS(reg->flags)) {
+		if (SBI_MEMREGION_M_ONLY_ACCESS(reg->flags)) {
 			pmp_idx++;
 			continue;
 		}
@@ -446,7 +446,7 @@ static int sbi_hart_oldpmp_configure(struct sbi_scratch *scratch,
 				     unsigned int pmp_log2gran,
 				     unsigned long pmp_addr_max)
 {
-	struct sbi_domain_memregion *reg;
+	struct sbi_memregion *reg;
 	struct sbi_domain *dom = sbi_domain_thishart_ptr();
 	unsigned int pmp_idx = 0;
 	unsigned int pmp_flags;
@@ -462,14 +462,14 @@ static int sbi_hart_oldpmp_configure(struct sbi_scratch *scratch,
 		 * If permissions are to be enforced for all modes on
 		 * this region, the lock bit should be set.
 		 */
-		if (reg->flags & SBI_DOMAIN_MEMREGION_ENF_PERMISSIONS)
+		if (reg->flags & SBI_MEMREGION_ENF_PERMISSIONS)
 			pmp_flags |= PMP_L;
 
-		if (reg->flags & SBI_DOMAIN_MEMREGION_SU_READABLE)
+		if (reg->flags & SBI_MEMREGION_SU_READABLE)
 			pmp_flags |= PMP_R;
-		if (reg->flags & SBI_DOMAIN_MEMREGION_SU_WRITABLE)
+		if (reg->flags & SBI_MEMREGION_SU_WRITABLE)
 			pmp_flags |= PMP_W;
-		if (reg->flags & SBI_DOMAIN_MEMREGION_SU_EXECUTABLE)
+		if (reg->flags & SBI_MEMREGION_SU_EXECUTABLE)
 			pmp_flags |= PMP_X;
 
 		pmp_addr = reg->base >> PMP_SHIFT;

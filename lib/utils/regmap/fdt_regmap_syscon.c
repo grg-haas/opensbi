@@ -242,8 +242,8 @@ static int regmap_syscon_init(const void *fdt, int nodeoff, u32 phandle,
 	}
 
 	rc = sbi_domain_root_add_memrange(addr, size, PAGE_SIZE,
-				(SBI_DOMAIN_MEMREGION_MMIO |
-				 SBI_DOMAIN_MEMREGION_SHARED_SURW_MRW));
+				(SBI_MEMREGION_MMIO |
+				 SBI_MEMREGION_SHARED_SURW_MRW));
 	if (rc)
 		goto fail_free_syscon;
 
