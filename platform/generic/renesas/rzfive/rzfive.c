@@ -45,7 +45,7 @@ static int renesas_rzfive_early_init(bool cold_boot, const struct fdt_match *mat
 	 * we grant full access.
 	 */
 	return sbi_domain_root_add_memrange(0x30000, 0x20000, 0x1000,
-					    SBI_DOMAIN_MEMREGION_M_RWX);
+					    SBI_MEMREGION_M_RWX);
 }
 
 static const struct fdt_match renesas_rzfive_match[] = {

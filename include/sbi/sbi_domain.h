@@ -43,7 +43,7 @@ struct sbi_domain {
 	/** Contexts for possible HARTs indexed by hartindex */
 	struct sbi_context *hartindex_to_context_table[SBI_HARTMASK_MAX_BITS];
 	/** Array of memory regions terminated by a region with order zero */
-	struct sbi_domain_memregion *regions;
+	struct sbi_memregion *regions;
 	/** HART id of the HART booting this domain */
 	u32 boot_hartid;
 	/** Arg1 (or 'a1' register) of next booting stage for this domain */
@@ -130,7 +130,7 @@ int sbi_domain_register(struct sbi_domain *dom,
  * @return SBI_EALREADY if memory region conflicts with the existing one
  * @return SBI_EINVAL otherwise
  */
-int sbi_domain_root_add_memregion(const struct sbi_domain_memregion *reg);
+int sbi_domain_root_add_memregion(const struct sbi_memregion *reg);
 
 /**
  * Add a memory range with its flags to the root domain

@@ -83,9 +83,9 @@ int plmt_cold_timer_init(struct plmt_data *plmt)
 	rc = sbi_domain_root_add_memrange(
 		(unsigned long)plmt->time_val, plmt->size,
 		PLMT_REGION_ALIGN,
-		SBI_DOMAIN_MEMREGION_MMIO |
-		SBI_DOMAIN_MEMREGION_M_READABLE |
-		SBI_DOMAIN_MEMREGION_M_WRITABLE);
+		SBI_MEMREGION_MMIO |
+		SBI_MEMREGION_M_READABLE |
+		SBI_MEMREGION_M_WRITABLE);
 	if (rc)
 		return rc;
 

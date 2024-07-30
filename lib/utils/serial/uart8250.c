@@ -136,6 +136,6 @@ int uart8250_init(unsigned long base, u32 in_freq, u32 baudrate, u32 reg_shift,
 	sbi_console_set_device(&uart8250_console);
 
 	return sbi_domain_root_add_memrange(base, PAGE_SIZE, PAGE_SIZE,
-					    (SBI_DOMAIN_MEMREGION_MMIO |
-					    SBI_DOMAIN_MEMREGION_SHARED_SURW_MRW));
+					    (SBI_MEMREGION_MMIO |
+					    SBI_MEMREGION_SHARED_SURW_MRW));
 }

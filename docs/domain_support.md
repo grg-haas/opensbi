@@ -8,7 +8,7 @@ features such as PMP, ePMP, IOPMP, SiFive Shield, etc.
 
 Important entities which help implement OpenSBI domain support are:
 
-* **struct sbi_domain_memregion** - Representation of a domain memory region
+* **struct sbi_memregion** - Representation of a domain memory region
 * **struct sbi_hartmask** - Representation of domain HART set
 * **struct sbi_domain** - Representation of a domain instance
 
@@ -21,7 +21,7 @@ it is not mandatory for the OpenSBI platform support to populate domains.
 Domain Memory Region
 --------------------
 
-A domain memory region is represented by **struct sbi_domain_memregion** in
+A domain memory region is represented by **struct sbi_memregion** in
 OpenSBI and has following details:
 
 * **order** - The size of a memory region is **2 ^ order** where **order**

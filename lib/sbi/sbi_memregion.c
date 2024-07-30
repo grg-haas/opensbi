@@ -4,10 +4,10 @@
 #include <sbi/sbi_error.h>
 #include <sbi/sbi_string.h>
 
-void sbi_domain_memregion_init(unsigned long addr,
+void sbi_memregion_init(unsigned long addr,
 			       unsigned long size,
 			       unsigned long flags,
-			       struct sbi_domain_memregion *reg)
+			       struct sbi_memregion *reg)
 {
 	unsigned long base = 0, order;
 
@@ -34,8 +34,8 @@ void sbi_domain_memregion_init(unsigned long addr,
 }
 
 /** Check if regionA is sub-region of regionB */
-static bool is_region_subset(const struct sbi_domain_memregion *regA,
-			     const struct sbi_domain_memregion *regB)
+static bool is_region_subset(const struct sbi_memregion *regA,
+			     const struct sbi_memregion *regB)
 {
 	ulong regA_start = regA->base;
 	ulong regA_end = regA->base + (BIT(regA->order) - 1);
@@ -52,8 +52,8 @@ static bool is_region_subset(const struct sbi_domain_memregion *regA,
 }
 
 /** Check if regionA can be replaced by regionB */
-static bool is_region_compatible(const struct sbi_domain_memregion *regA,
-				 const struct sbi_domain_memregion *regB)
+static bool is_region_compatible(const struct sbi_memregion *regA,
+				 const struct sbi_memregion *regB)
 {
 	if (is_region_subset(regA, regB) && regA->flags == regB->flags)
 		return true;
@@ -62,7 +62,7 @@ static bool is_region_compatible(const struct sbi_domain_memregion *regA,
 }
 
 /* Check if region complies with constraints */
-static bool is_region_valid(const struct sbi_domain_memregion *reg)
+static bool is_region_valid(const struct sbi_memregion *reg)
 {
 	if (reg->order < 3 || __riscv_xlen < reg->order)
 		return false;
@@ -77,8 +77,8 @@ static bool is_region_valid(const struct sbi_domain_memregion *reg)
 }
 
 /** Check if regionA should be placed before regionB */
-static bool is_region_before(const struct sbi_domain_memregion *regA,
-			     const struct sbi_domain_memregion *regB)
+static bool is_region_before(const struct sbi_memregion *regA,
+			     const struct sbi_memregion *regB)
 {
 	if (regA->order < regB->order)
 		return true;
@@ -91,26 +91,26 @@ static bool is_region_before(const struct sbi_domain_memregion *regA,
 }
 
 
-static void swap_region(struct sbi_domain_memregion* reg1,
-			struct sbi_domain_memregion* reg2)
+static void swap_region(struct sbi_memregion * reg1,
+			struct sbi_memregion * reg2)
 {
-	struct sbi_domain_memregion treg;
+	struct sbi_memregion treg;
 
 	sbi_memcpy(&treg, reg1, sizeof(treg));
 	sbi_memcpy(reg1, reg2, sizeof(treg));
 	sbi_memcpy(reg2, &treg, sizeof(treg));
 }
 
-static void clear_region(struct sbi_domain_memregion* reg)
+static void clear_region(struct sbi_memregion * reg)
 {
 	sbi_memset(reg, 0x0, sizeof(*reg));
 }
 
-int sbi_domain_memregions_sanitize(struct sbi_domain *dom)
+int sbi_memregion_sanitize(struct sbi_domain *dom)
 {
 	int i, j, count;
 	bool is_covered;
-	struct sbi_domain_memregion *reg, *reg1;
+	struct sbi_memregion *reg, *reg1;
 
 	/* Check memory regions */
 	if (!dom->regions) {
@@ -187,7 +187,7 @@ bool sbi_domain_check_addr(const struct sbi_domain *dom,
 			   unsigned long access_flags)
 {
 	bool rmmio, mmio = false;
-	struct sbi_domain_memregion *reg;
+	struct sbi_memregion *reg;
 	unsigned long rstart, rend, rflags, rwx = 0, rrwx = 0;
 
 	if (!dom)
@@ -199,13 +199,13 @@ bool sbi_domain_check_addr(const struct sbi_domain *dom,
 	 * bits will fall at same offsets after the shift.
 	 */
 	if (access_flags & SBI_DOMAIN_READ)
-		rwx |= SBI_DOMAIN_MEMREGION_M_READABLE;
+		rwx |= SBI_MEMREGION_M_READABLE;
 
 	if (access_flags & SBI_DOMAIN_WRITE)
-		rwx |= SBI_DOMAIN_MEMREGION_M_WRITABLE;
+		rwx |= SBI_MEMREGION_M_WRITABLE;
 
 	if (access_flags & SBI_DOMAIN_EXECUTE)
-		rwx |= SBI_DOMAIN_MEMREGION_M_EXECUTABLE;
+		rwx |= SBI_MEMREGION_M_EXECUTABLE;
 
 	if (access_flags & SBI_DOMAIN_MMIO)
 		mmio = true;
@@ -213,15 +213,15 @@ bool sbi_domain_check_addr(const struct sbi_domain *dom,
 	sbi_domain_for_each_memregion(dom, reg) {
 		rflags = reg->flags;
 		rrwx = (mode == PRV_M ?
-					(rflags & SBI_DOMAIN_MEMREGION_M_ACCESS_MASK) :
-					(rflags & SBI_DOMAIN_MEMREGION_SU_ACCESS_MASK)
-						>> SBI_DOMAIN_MEMREGION_SU_ACCESS_SHIFT);
+					(rflags & SBI_MEMREGION_M_ACCESS_MASK) :
+					(rflags & SBI_MEMREGION_SU_ACCESS_MASK)
+						>> SBI_MEMREGION_SU_ACCESS_SHIFT);
 
 		rstart = reg->base;
 		rend = (reg->order < __riscv_xlen) ?
 						     rstart + ((1UL << reg->order) - 1) : -1UL;
 		if (rstart <= addr && addr <= rend) {
-			rmmio = (rflags & SBI_DOMAIN_MEMREGION_MMIO) ? true : false;
+			rmmio = (rflags & SBI_MEMREGION_MMIO) ? true : false;
 			if (mmio != rmmio)
 				return false;
 			return ((rrwx & rwx) == rwx) ? true : false;
@@ -231,12 +231,12 @@ bool sbi_domain_check_addr(const struct sbi_domain *dom,
 	return (mode == PRV_M) ? true : false;
 }
 
-static const struct sbi_domain_memregion *find_region(
+static const struct sbi_memregion *find_region(
 	const struct sbi_domain *dom,
 	unsigned long addr)
 {
 	unsigned long rstart, rend;
-	struct sbi_domain_memregion *reg;
+	struct sbi_memregion *reg;
 
 	sbi_domain_for_each_memregion(dom, reg) {
 		rstart = reg->base;
@@ -249,12 +249,12 @@ static const struct sbi_domain_memregion *find_region(
 	return NULL;
 }
 
-static const struct sbi_domain_memregion *find_next_subset_region(
+static const struct sbi_memregion *find_next_subset_region(
 	const struct sbi_domain *dom,
-	const struct sbi_domain_memregion *reg,
+	const struct sbi_memregion *reg,
 	unsigned long addr)
 {
-	struct sbi_domain_memregion *sreg, *ret = NULL;
+	struct sbi_memregion *sreg, *ret = NULL;
 
 	sbi_domain_for_each_memregion(dom, sreg) {
 		if (sreg == reg || (sreg->base <= addr) ||
@@ -275,7 +275,7 @@ bool sbi_domain_check_addr_range(const struct sbi_domain *dom,
 				 unsigned long access_flags)
 {
 	unsigned long max = addr + size;
-	const struct sbi_domain_memregion *reg, *sreg;
+	const struct sbi_memregion *reg, *sreg;
 
 	if (!dom)
 		return false;
@@ -303,7 +303,7 @@ bool sbi_domain_check_addr_range(const struct sbi_domain *dom,
 void sbi_domain_dump_memregions(const struct sbi_domain *dom, const char *suffix)
 {
 	unsigned long rstart, rend;
-	struct sbi_domain_memregion *reg;
+	struct sbi_memregion *reg;
 	int i = 0, k;
 
 	sbi_domain_for_each_memregion(dom, reg) {
@@ -317,23 +317,23 @@ void sbi_domain_dump_memregions(const struct sbi_domain *dom, const char *suffix
 		k = 0;
 
 		sbi_printf("M: ");
-		if (reg->flags & SBI_DOMAIN_MEMREGION_MMIO)
+		if (reg->flags & SBI_MEMREGION_MMIO)
 			sbi_printf("%cI", (k++) ? ',' : '(');
-		if (reg->flags & SBI_DOMAIN_MEMREGION_M_READABLE)
+		if (reg->flags & SBI_MEMREGION_M_READABLE)
 			sbi_printf("%cR", (k++) ? ',' : '(');
-		if (reg->flags & SBI_DOMAIN_MEMREGION_M_WRITABLE)
+		if (reg->flags & SBI_MEMREGION_M_WRITABLE)
 			sbi_printf("%cW", (k++) ? ',' : '(');
-		if (reg->flags & SBI_DOMAIN_MEMREGION_M_EXECUTABLE)
+		if (reg->flags & SBI_MEMREGION_M_EXECUTABLE)
 			sbi_printf("%cX", (k++) ? ',' : '(');
 		sbi_printf("%s ", (k++) ? ")" : "()");
 
 		k = 0;
 		sbi_printf("S/U: ");
-		if (reg->flags & SBI_DOMAIN_MEMREGION_SU_READABLE)
+		if (reg->flags & SBI_MEMREGION_SU_READABLE)
 			sbi_printf("%cR", (k++) ? ',' : '(');
-		if (reg->flags & SBI_DOMAIN_MEMREGION_SU_WRITABLE)
+		if (reg->flags & SBI_MEMREGION_SU_WRITABLE)
 			sbi_printf("%cW", (k++) ? ',' : '(');
-		if (reg->flags & SBI_DOMAIN_MEMREGION_SU_EXECUTABLE)
+		if (reg->flags & SBI_MEMREGION_SU_EXECUTABLE)
 			sbi_printf("%cX", (k++) ? ',' : '(');
 		sbi_printf("%s\n", (k++) ? ")" : "()");
 
