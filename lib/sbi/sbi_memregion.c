@@ -4,13 +4,10 @@
 #include <sbi/sbi_error.h>
 #include <sbi/sbi_string.h>
 
-void sbi_memregion_init(unsigned long addr,
-			       unsigned long size,
-			       unsigned long flags,
-			       struct sbi_memregion *reg)
+static void memregion_sanitize_pmp(struct sbi_memregion *reg)
 {
 	unsigned long base = 0, order;
-
+	unsigned long addr = reg->base, size = reg->size;
 	for (order = log2roundup(size) ; order <= __riscv_xlen; order++) {
 		if (order < __riscv_xlen) {
 			base = addr & ~((1UL << order) - 1UL);
@@ -23,12 +20,20 @@ void sbi_memregion_init(unsigned long addr,
 			base = 0;
 			break;
 		}
-
 	}
 
+	reg->base = base;
+	reg->size = (order == __riscv_xlen) ? -1UL : BIT(order);
+}
+
+void sbi_memregion_init(unsigned long addr,
+			       unsigned long size,
+			       unsigned long flags,
+			       struct sbi_memregion *reg)
+{
 	if (reg) {
-		reg->base = base;
-		reg->size = (order == __riscv_xlen) ? -1UL : BIT(order);
+		reg->base = addr;
+		reg->size = size;
 		reg->flags = flags;
 	}
 }
@@ -61,8 +66,7 @@ static bool is_region_compatible(const struct sbi_memregion *regA,
 	return false;
 }
 
-/* Check if region complies with constraints */
-static bool is_region_valid(const struct sbi_memregion *reg)
+static bool is_region_valid_pmp(const struct sbi_memregion *reg)
 {
 	unsigned int order = log2roundup(reg->size);
 	if (order < 3 || __riscv_xlen < order)
@@ -73,6 +77,25 @@ static bool is_region_valid(const struct sbi_memregion *reg)
 
 	if (order < __riscv_xlen && (reg->base & (BIT(order) - 1)))
 		return false;
+
+	return true;
+}
+
+/* Check if region complies with constraints */
+static bool is_region_valid(const struct sbi_memregion *reg,
+			    enum sbi_isolation_method type)
+{
+	switch(type) {
+	case SBI_ISOLATION_UNKNOWN:
+		break;
+
+	case SBI_ISOLATION_PMP:
+	case SBI_ISOLATION_SMEPMP:
+		return is_region_valid_pmp(reg);
+
+	default:
+		return false;
+	}
 
 	return true;
 }
@@ -189,7 +212,40 @@ static void merge_memregions(struct sbi_domain *dom, int *nmerged)
 	}
 }
 
-int sbi_memregion_sanitize(struct sbi_domain *dom)
+static int memregion_sanitize(struct sbi_domain *dom,
+			      struct sbi_memregion *reg,
+			      enum sbi_isolation_method type)
+{
+	if (!reg) {
+		return SBI_EINVAL;
+	}
+
+	switch (type) {
+		case SBI_ISOLATION_UNKNOWN:
+			break;
+
+		case SBI_ISOLATION_PMP:
+		case SBI_ISOLATION_SMEPMP:
+			memregion_sanitize_pmp(reg);
+			break;
+
+		default:
+			return SBI_EINVAL;
+	}
+
+	if (!is_region_valid(reg, type)) {
+		sbi_printf("%s: %s has invalid region base=0x%lx "
+			   "size=0x%lx flags=0x%lx\n", __func__,
+			   dom->name, reg->base, reg->size,
+			   reg->flags);
+		return SBI_EINVAL;
+	}
+
+	return SBI_OK;
+}
+
+int sbi_memregion_sanitize(struct sbi_domain *dom,
+			   enum sbi_isolation_method type)
 {
 	int count, nmerged;
 	struct sbi_memregion *reg;
@@ -201,20 +257,23 @@ int sbi_memregion_sanitize(struct sbi_domain *dom)
 		return SBI_EINVAL;
 	}
 
-	sbi_domain_for_each_memregion(dom, reg) {
-		if (!is_region_valid(reg)) {
-			sbi_printf("%s: %s has invalid region base=0x%lx "
-				   "size=0x%lx flags=0x%lx\n", __func__,
-				   dom->name, reg->base, reg->size,
-				   reg->flags);
-			return SBI_EINVAL;
-		}
+	/* Make sure we're not refinalizing */
+	if (type != SBI_ISOLATION_UNKNOWN &&
+	    dom->isol_mode != SBI_ISOLATION_UNKNOWN &&
+	    type != dom->isol_mode) {
+		sbi_printf("%s: %s attempting to resanitize memregions\n",
+			   __func__, dom->name);
+		return SBI_EINVAL;
 	}
 
 	/* Count memory regions */
 	count = 0;
-	sbi_domain_for_each_memregion(dom, reg)
+	sbi_domain_for_each_memregion(dom, reg) {
 		count++;
+		if (memregion_sanitize(dom, reg, type) < 0) {
+			return SBI_EINVAL;
+		}
+	}
 
 	/* Check presence of firmware regions */
 	if (!dom->fw_region_inited) {
@@ -228,6 +287,16 @@ int sbi_memregion_sanitize(struct sbi_domain *dom)
 		overlap_memregions(dom, count);
 		merge_memregions(dom, &nmerged);
 	} while (nmerged);
+
+	sbi_domain_for_each_memregion(dom, reg) {
+		if (!is_region_valid(reg, type)) {
+			sbi_printf("%s: %s has invalid region base=0x%lx "
+				   "size=0x%lx flags=0x%lx\n", __func__,
+				   dom->name, reg->base, reg->size,
+				   reg->flags);
+			return SBI_EINVAL;
+		}
+	}
 
 	return SBI_OK;
 }

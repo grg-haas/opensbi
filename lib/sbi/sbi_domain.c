@@ -116,7 +116,7 @@ static int sanitize_domain(struct sbi_domain *dom)
 		}
 	}
 
-	rc = sbi_memregion_sanitize(dom);
+	rc = sbi_memregion_sanitize(dom, SBI_ISOLATION_UNKNOWN);
 	if (rc) {
 		sbi_printf("%s: %s has unsanitizable regions\n",
 			   __func__, dom->name);
@@ -372,7 +372,7 @@ int sbi_domain_finalize(struct sbi_scratch *scratch, u32 cold_hartid)
 		/* Domain boot HART index */
 		dhart = sbi_hartid_to_hartindex(dom->boot_hartid);
 
-		/* Ignore of boot HART is off limits */
+		/* Ignore if boot HART is off limits */
 		if (!sbi_hartindex_valid(dhart))
 			continue;
 
