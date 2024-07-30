@@ -44,6 +44,8 @@ struct sbi_domain {
 	struct sbi_context *hartindex_to_context_table[SBI_HARTMASK_MAX_BITS];
 	/** Array of memory regions terminated by a region with order zero */
 	struct sbi_memregion *regions;
+	/** Current isolation mode */
+	enum sbi_isolation_method isol_mode;
 	/** HART id of the HART booting this domain */
 	u32 boot_hartid;
 	/** Arg1 (or 'a1' register) of next booting stage for this domain */
