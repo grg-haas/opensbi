@@ -24,6 +24,7 @@
 
 struct mpxy_fdt_info {
 	struct sbi_domain *dom;
+	char *bootargs;
 };
 
 static void mpxy_fdt_swap_msg(void *msgbuf, void *respbuf, u32 msg_len, unsigned long *ack_len)
@@ -102,6 +103,9 @@ static const struct fdt_copy_node copy_nodes[] = {
 	{ FDT_MEM, "/soc", "ranges" },
 	{ FDT_CELL, "/soc", "#address-cells"},
 	{ FDT_CELL, "/soc", "#size-cells"},
+
+	{ FDT_SUBNODE, "/", "chosen" },
+	{ FDT_SUBNODE, "/chosen", "opensbi-domains" }
 };
 
 static int init_fdt_from_table(void *new_fdt, const void *base_fdt, int nentries,
@@ -260,6 +264,24 @@ static int set_fdt_memory(void *new_fdt, struct sbi_domain *dom)
 	return rc;
 }
 
+static int set_fdt_bootargs(void *new_fdt, char *bootargs)
+{
+	int offs, rc;
+	if (bootargs) {
+		offs = fdt_path_offset(new_fdt, "/chosen");
+		if (offs < 0) {
+			return offs;
+		}
+
+		rc = fdt_setprop_string(new_fdt, offs, "bootargs", bootargs);
+		if (rc) {
+			return rc;
+		}
+	}
+
+	return SBI_OK;
+}
+
 static int copy_fdt_devices(void *new_fdt, const void *base_fdt, struct sbi_domain *dom)
 {
 	int i, j, rc;
@@ -362,6 +384,16 @@ static int mpxy_fdt_setup_fdt(const void *base_fdt, struct sbi_mpxy_channel *cha
 		return rc;
 	}
 
+	/* Set bootargs */
+	rc = set_fdt_bootargs(new_fdt, info->bootargs);
+	if (rc) {
+		return rc;
+	}
+
+	copy_all_properties_(new_fdt, base_fdt,
+			     fdt_path_offset(new_fdt, "/chosen/opensbi-domains"),
+			     fdt_path_offset(base_fdt, "/chosen/opensbi-domains"));
+
 	/* Copy any attached devices */
 	rc = copy_fdt_devices(new_fdt, base_fdt, info->dom);
 	if (rc) {
@@ -415,6 +447,16 @@ static int mpxy_fdt_parse(const void *fdt, int nodeoff,
 	if (!prop_value || len < 4)
 		return SBI_EINVAL;
 	channel->channel_id = (unsigned int)fdt32_to_cpu(*prop_value);
+
+	/* Boot arguments */
+	prop_value = fdt_getprop(fdt, nodeoff, "bootargs", &len);
+	if (prop_value) {
+		info->bootargs = sbi_zalloc(len);
+		if (!info->bootargs)
+			return SBI_ENOMEM;
+
+		sbi_strcpy(info->bootargs, (const char *) prop_value);
+	}
 
 	return SBI_OK;
 }
