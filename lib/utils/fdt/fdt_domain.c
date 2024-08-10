@@ -466,6 +466,12 @@ static int __fdt_parse_domain(const void *fdt, int domain_offset, void *opaque)
 	else
 		dom->system_suspend_allowed = false;
 
+	/* Read smmtt-mode DT property */
+	val = fdt_getprop(fdt, domain_offset, "smmtt-mode", &len);
+	if (val && len == 4) {
+		dom->smmtt_mode = fdt32_to_cpu(val[0]);
+	}
+
 	/* Find /cpus DT node */
 	cpus_offset = fdt_path_offset(fdt, "/cpus");
 	if (cpus_offset < 0) {

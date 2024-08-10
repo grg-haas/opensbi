@@ -310,7 +310,7 @@ static int smmtt_add_region_mttl2_1g(mttl2_entry_t *entry, unsigned long flags)
 #define FITS(base, size, region) \
 	(((size) >= (region)) && (!((base) % (region))))
 
-#define MiB (1UL << 20)
+#define MiB (1ULL << 20)
 #define GiB (1ULL << 30)
 
 #if __riscv_xlen == 32
