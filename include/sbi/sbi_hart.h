@@ -12,6 +12,7 @@
 
 #include <sbi/sbi_types.h>
 #include <sbi/sbi_bitops.h>
+#include <sbi/sbi_smmtt.h>
 
 /** Possible privileged specification versions of a hart */
 enum sbi_hart_priv_versions {
@@ -67,6 +68,10 @@ enum sbi_hart_extensions {
 	SBI_HART_EXT_SVADE,
 	/** Hart has Svadu extension */
 	SBI_HART_EXT_SVADU,
+	/** Hart has Smsdid extension */
+	SBI_HART_EXT_SMSDID,
+	/** Hart has Smmtt extension */
+	SBI_HART_EXT_SMMTT,
 
 	/** Maximum index of Hart extension */
 	SBI_HART_EXT_MAX,
@@ -103,6 +108,8 @@ struct sbi_hart_features {
 	unsigned int pmp_log2gran;
 	unsigned int mhpm_mask;
 	unsigned int mhpm_bits;
+	unsigned int sdidlen;
+	unsigned long smmtt_supported_modes[BITS_TO_LONGS(SMMTT_MAX)];
 };
 
 struct sbi_scratch;
@@ -123,6 +130,8 @@ unsigned int sbi_hart_pmp_count(struct sbi_scratch *scratch);
 unsigned int sbi_hart_pmp_log2gran(struct sbi_scratch *scratch);
 unsigned int sbi_hart_pmp_addrbits(struct sbi_scratch *scratch);
 unsigned int sbi_hart_mhpm_bits(struct sbi_scratch *scratch);
+unsigned int sbi_hart_has_smmtt_mode(struct sbi_scratch *scratch,
+				     smmtt_mode_t mode);
 int sbi_hart_isolation_configure(struct sbi_scratch *scratch);
 int sbi_hart_map_saddr(unsigned long base, unsigned long size);
 int sbi_hart_unmap_saddr(void);

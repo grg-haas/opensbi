@@ -20,6 +20,7 @@
 #include <sbi/sbi_math.h>
 #include <sbi/sbi_platform.h>
 #include <sbi/sbi_pmu.h>
+#include <sbi/sbi_smmtt.h>
 #include <sbi/sbi_string.h>
 #include <sbi/sbi_trap.h>
 #include <sbi/sbi_hfence.h>
@@ -281,6 +282,19 @@ unsigned int sbi_hart_mhpm_bits(struct sbi_scratch *scratch)
 			sbi_scratch_offset_ptr(scratch, hart_features_offset);
 
 	return hfeatures->mhpm_bits;
+}
+
+unsigned int sbi_hart_has_smmtt_mode(struct sbi_scratch *scratch,
+				     smmtt_mode_t mode)
+{
+	struct sbi_hart_features *hfeatures =
+		sbi_scratch_offset_ptr(scratch, hart_features_offset);
+
+	if (!sbi_hart_has_extension(scratch, SBI_HART_EXT_SMMTT)) {
+		return 0;
+	}
+
+	return __test_bit(mode, hfeatures->smmtt_supported_modes);
 }
 
 /*
@@ -562,16 +576,20 @@ int sbi_hart_isolation_configure(struct sbi_scratch *scratch)
 	if (!pmp_count)
 		return 0;
 
-	pmp_log2gran = sbi_hart_pmp_log2gran(scratch);
-	pmp_bits = sbi_hart_pmp_addrbits(scratch) - 1;
-	pmp_addr_max = (1UL << pmp_bits) | ((1UL << pmp_bits) - 1);
+	if (sbi_hart_has_extension(scratch, SBI_HART_EXT_SMMTT)) {
+		rc = sbi_hart_smmtt_configure(scratch);
+	} else {
+		pmp_log2gran = sbi_hart_pmp_log2gran(scratch);
+		pmp_bits = sbi_hart_pmp_addrbits(scratch) - 1;
+		pmp_addr_max = (1UL << pmp_bits) | ((1UL << pmp_bits) - 1);
 
-	if (sbi_hart_has_extension(scratch, SBI_HART_EXT_SMEPMP))
-		rc = sbi_hart_smepmp_configure(scratch, pmp_count,
-						pmp_log2gran, pmp_addr_max);
-	else
-		rc = sbi_hart_oldpmp_configure(scratch, pmp_count,
-						pmp_log2gran, pmp_addr_max);
+		if (sbi_hart_has_extension(scratch, SBI_HART_EXT_SMEPMP))
+			rc = sbi_hart_smepmp_configure(scratch, pmp_count,
+							pmp_log2gran, pmp_addr_max);
+		else
+			rc = sbi_hart_oldpmp_configure(scratch, pmp_count,
+							pmp_log2gran, pmp_addr_max);
+	}
 
 	/*
 	 * As per section 3.7.2 of privileged specification v1.12,
@@ -703,6 +721,8 @@ const struct sbi_hart_ext_data sbi_hart_ext[] = {
 	__SBI_HART_EXT_DATA(ssccfg, SBI_HART_EXT_SSCCFG),
 	__SBI_HART_EXT_DATA(svade, SBI_HART_EXT_SVADE),
 	__SBI_HART_EXT_DATA(svadu, SBI_HART_EXT_SVADU),
+	__SBI_HART_EXT_DATA(smsdid, SBI_HART_EXT_SMSDID),
+	__SBI_HART_EXT_DATA(smmtt, SBI_HART_EXT_SMMTT),
 };
 
 _Static_assert(SBI_HART_EXT_MAX == array_size(sbi_hart_ext),
@@ -798,6 +818,7 @@ static int hart_detect_features(struct sbi_scratch *scratch)
 		sbi_scratch_offset_ptr(scratch, hart_features_offset);
 	unsigned long val, oldval;
 	bool has_zicntr = false;
+	smmtt_mode_t mode, check;
 	int rc;
 
 	/* If hart features already detected then do nothing */
@@ -808,6 +829,7 @@ static int hart_detect_features(struct sbi_scratch *scratch)
 	sbi_memset(hfeatures->extensions, 0, sizeof(hfeatures->extensions));
 	hfeatures->pmp_count = 0;
 	hfeatures->mhpm_mask = 0;
+	hfeatures->sdidlen = 0;
 	hfeatures->priv_version = SBI_HART_PRIV_VER_UNKNOWN;
 
 #define __check_hpm_csr(__csr, __mask) 					  \
@@ -950,6 +972,28 @@ __pmp_skip:
 	/* Detect if hart support sdtrig (debug triggers) */
 	__check_ext_csr(SBI_HART_PRIV_VER_UNKNOWN,
 			CSR_TSELECT, SBI_HART_EXT_SDTRIG);
+	/* Detect if hart supports supervisor domain extensions */
+	__check_ext_csr(SBI_HART_PRIV_VER_UNKNOWN,
+			CSR_MTTP, SBI_HART_EXT_SMSDID);
+
+	if(sbi_hart_has_extension(scratch, SBI_HART_EXT_SMSDID)) {
+		hfeatures->sdidlen = mttp_get_sdidlen();
+
+		/* Detect supported SMMTT modes */
+		for (mode = SMMTT_BARE + 1; mode < SMMTT_MAX; mode++) {
+			mttp_set(mode, 0, 0);
+			mttp_get(&check, NULL, NULL);
+
+			if(check == mode) {
+				__set_bit(mode, hfeatures->smmtt_supported_modes);
+
+				// We support at least one mode besides the
+				// always-supported SMMTT_BARE
+				__sbi_hart_update_extension(
+					hfeatures, SBI_HART_EXT_SMMTT, true);
+			}
+		}
+	}
 
 #undef __check_ext_csr
 

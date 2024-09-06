@@ -3,6 +3,8 @@
 #include <sbi/sbi_console.h>
 #include <sbi/sbi_error.h>
 #include <sbi/sbi_string.h>
+#include <libfdt.h>
+#include <sbi_utils/fdt/fdt_helper.h>
 
 void sbi_memregion_init(unsigned long addr,
 			       unsigned long size,
@@ -59,6 +61,17 @@ static bool is_region_valid_pmp(const struct sbi_memregion *reg)
 	return true;
 }
 
+static bool is_region_valid_smmtt(const struct sbi_memregion *reg)
+{
+	if (reg->base % PAGE_SIZE != 0)
+		return false;
+
+	if (reg->size % PAGE_SIZE != 0)
+		return false;
+
+	return true;
+}
+
 /* Check if region complies with constraints */
 static bool is_region_valid(const struct sbi_memregion *reg,
 			    enum sbi_isolation_method type)
@@ -70,6 +83,9 @@ static bool is_region_valid(const struct sbi_memregion *reg,
 	case SBI_ISOLATION_PMP:
 	case SBI_ISOLATION_SMEPMP:
 		return is_region_valid_pmp(reg);
+
+	case SBI_ISOLATION_SMMTT:
+		return is_region_valid_smmtt(reg);
 
 	default:
 		return false;
@@ -212,6 +228,12 @@ static void memregion_sanitize_pmp(struct sbi_memregion *reg)
 	reg->size = (order == __riscv_xlen) ? -1UL : BIT(order);
 }
 
+static void memregion_sanitize_smmtt(struct sbi_memregion *reg)
+{
+	reg->base = ROUNDDOWN(reg->base, PAGE_SIZE);
+	reg->size = ROUNDUP(reg->size, PAGE_SIZE);
+}
+
 static int memregion_sanitize(struct sbi_domain *dom,
 			      struct sbi_memregion *reg,
 			      enum sbi_isolation_method type)
@@ -227,6 +249,10 @@ static int memregion_sanitize(struct sbi_domain *dom,
 		case SBI_ISOLATION_PMP:
 		case SBI_ISOLATION_SMEPMP:
 			memregion_sanitize_pmp(reg);
+			break;
+
+		case SBI_ISOLATION_SMMTT:
+			memregion_sanitize_smmtt(reg);
 			break;
 
 		default:

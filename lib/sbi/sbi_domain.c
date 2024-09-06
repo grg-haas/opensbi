@@ -17,6 +17,8 @@
 #include <sbi/sbi_platform.h>
 #include <sbi/sbi_scratch.h>
 #include <sbi/sbi_string.h>
+#include <libfdt.h>
+#include <sbi_utils/fdt/fdt_helper.h>
 
 /*
  * We allocate an extra element because sbi_domain_for_each() expects
@@ -424,6 +426,7 @@ int sbi_domain_init(struct sbi_scratch *scratch, u32 cold_hartid)
 {
 	u32 i;
 	int rc;
+	uint64_t base, size;
 	struct sbi_hartmask *root_hmask;
 	struct sbi_memregion *root_memregs;
 	const struct sbi_platform *plat = sbi_platform_ptr(scratch);
@@ -482,11 +485,19 @@ int sbi_domain_init(struct sbi_scratch *scratch, u32 cold_hartid)
 	 * have access to SU region while previous entries will allow
 	 * access to M-mode regions.
 	 */
-	sbi_memregion_init(0, ~0UL,
-			   (SBI_MEMREGION_SU_READABLE |
-			    SBI_MEMREGION_SU_WRITABLE |
-			    SBI_MEMREGION_SU_EXECUTABLE),
-			   &root_memregs[root_memregs_count++]);
+	rc = fdt_path_offset((const void *)scratch->next_arg1, "/memory");
+	if (rc < 0) {
+		rc = SBI_ENODEV;
+		goto fail_free_root_hmask;
+	}
+
+	fdt_get_node_addr_size((void *)scratch->next_arg1, rc, 0, &base, &size);
+
+	sbi_memregion_init(base, size,
+			  (SBI_MEMREGION_SU_READABLE |
+			   SBI_MEMREGION_SU_WRITABLE |
+			   SBI_MEMREGION_SU_EXECUTABLE),
+			  &root_memregs[root_memregs_count++]);
 
 	/* Root domain memory region end */
 	root_memregs[root_memregs_count].size = 0;

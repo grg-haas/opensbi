@@ -121,7 +121,7 @@ static int __fixup_find_domain_offset(void *fdt, int doff, void *p)
 }
 
 #define DISABLE_DEVICES_MASK	(SBI_MEMREGION_READABLE | \
-				 SBI_MEMREGION_WRITEABLE | \
+				 SBI_MEMREGION_WRITABLE | \
 				 SBI_MEMREGION_EXECUTABLE)
 
 static int __fixup_count_disable_devices(void *fdt, int doff, int roff,

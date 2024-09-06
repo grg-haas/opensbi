@@ -355,7 +355,8 @@ GENFLAGS	+=	$(libsbiutils-genflags-y)
 GENFLAGS	+=	$(platform-genflags-y)
 GENFLAGS	+=	$(firmware-genflags-y)
 
-CFLAGS		=	-g -Wall -Werror -ffreestanding -nostdlib -fno-stack-protector -fno-strict-aliasing
+CFLAGS		=	$(EXTRA_CFLAGS)
+CFLAGS		+=	-g -Wall -Werror -ffreestanding -nostdlib -fno-stack-protector -fno-strict-aliasing
 ifneq ($(DEBUG),)
 CFLAGS		+=	-O0
 else
